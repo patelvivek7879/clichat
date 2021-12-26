@@ -22,11 +22,12 @@ getUserByUsername(username){
 	});
 	return user;
 }
+
 getLoggedInUsers(){
 	var loggedInUsers=[];
-	for(var e=0;e<users.length;e++){
+	for(var e=0;e<this.users.length;e++){
 		if(this.users[e].loggedIn){
-			loggedInUsers.push(users[e]);	
+			loggedInUsers.push(this.users[e].username);	
 		}
 	}
 return loggedInUsers;
@@ -72,23 +73,28 @@ else{
 	response.error = "Invalid username / password";
 	response.result="";
 }
-responseObject.socket.write(JSON.stringify(response));
+requestObject.socket.write(JSON.stringify(response));
 }
-if(requestObject.action=="logout"){}
+if(requestObject.action=="logout"){
+	var  response = new Response();
+	response.action = requestObject.action;
+	requestObject.socket.write(JSON.stringify(response));
+}
 if(requestObject.action=="getUsers"){
 	var response = new Response();
 	response.action = requestObject.action;
-	response.result = model.getLoggedInUser();
+	response.result = model.getLoggedInUsers();
 	requestObject.socket.write(JSON.stringify(response));
 }
 }
 
 populateDataStructure();
-var server = net.createServer(function(){
+var server = net.createServer(function(socket){
 	socket.on("data",function(data){
 		var requestObject = JSON.parse(data);
 		requestObject.socket = socket;
 		try{
+			processRequest(requestObject);
 		}catch(error){
 			console.log(error);
 		}
@@ -103,5 +109,5 @@ socket.on("error",function(){
 });
 });
 
-server.listen(6000, "localhost");
+server.listen(5500, "localhost");
 console.log("Chat server is running on port 5500");

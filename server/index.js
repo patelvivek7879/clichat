@@ -47,7 +47,6 @@ function populateDataStructure() {
 }
 
 function processRequest(requestObject) {
-
   if (requestObject.action == "login") {
     let username = requestObject.username;
     let password = requestObject.password;
@@ -74,23 +73,31 @@ function processRequest(requestObject) {
       response.result = "";
     }
     requestObject.socket.write(JSON.stringify(response));
-  }else if (requestObject.action == "logout") {
+  } else if (requestObject.action == "logout") {
     var response = new Response();
     response.action = requestObject.action;
     requestObject.socket.write(JSON.stringify(response));
-  }else if (requestObject.action == "getUsers") {
+  } else if (requestObject.action == "getUsers") {
     var response = new Response();
     response.action = requestObject.action;
     response.result = model.getLoggedInUsers();
     requestObject.socket.write(JSON.stringify(response));
-  }else {
-	console.log(requestObject.action)
-	  var response = new Response();
-	  response.action = requestObject.action;
-	  response.result = "";
-	  response.error = "Invalid action.";
-	  requestObject.socket.write(JSON.stringify(response));
-	}
+  } else {
+    if (requestObject.action == "exit") {
+      var response = new Response();
+      response.action = requestObject.action;
+      response.result = "";
+      response.error = "Exiting...";
+      requestObject.socket.write(JSON.stringify(response));
+      requestObject.socket.end();
+    } else {
+      var response = new Response();
+      response.action = requestObject.action;
+      response.result = "";
+      response.error = "Invalid action.";
+      requestObject.socket.write(JSON.stringify(response));
+    }
+  }
 }
 
 populateDataStructure();

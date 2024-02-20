@@ -1,0 +1,24 @@
+{
+  "name": "clichat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "client.js",
+  "scripts": {
+    "server": "node ./server",
+    "client": "node ./client"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/patelvivek7879/clichat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/patelvivek7879/clichat/issues"
+  },
+  "homepage": "https://github.com/patelvivek7879/clichat#readme",
+  "dependencies": {
+    "esm": "^3.2.25"
+  }
+}

@@ -1,3 +1,6 @@
+const DataModel = require('./DataModel');
+const Request = require('./Request');
+
 const net = require("net");
 const readline = require('readline');
 const events = require('events');
@@ -9,19 +12,6 @@ function acceptInput(q, ioInterface){
             });
         });
     return promise;
-}
-
-class DataModel{
-    constructor(){
-        this.user=null;
-    }
-}
-
-// some lines ---
-class Request{
-    constructor(){
-        this.action=""
-    }
 }
 
 var model = new DataModel();

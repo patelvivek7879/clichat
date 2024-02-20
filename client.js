@@ -84,9 +84,10 @@ client.write(JSON.stringify(request));
 function processAcceptCommandActionResponse(response){
     if(response.action == "getUsers"){
         eventEmitter.emit("usersListArrived", response.result);
-    }
-    if(response.action=="logout"){
+    }else if(response.action=="logout"){
         eventEmitter.emit("loggedOut");
+    }else {
+        eventEmitter.emit("error", response.error);
     }
 }
 
@@ -111,6 +112,10 @@ function loggedOut(){
 eventEmitter.on('loggedIn', loggedIn);
 eventEmitter.on("usersListArrived", usersListArrived);
 eventEmitter.on("loggedOut", loggedOut)
+eventEmitter.on("error", function(error){
+    console.log(error);
+    processAcceptCommandAction();
+})
 
 client = new net.Socket();
 client.connect(5500, "localhost", function(){
@@ -122,7 +127,10 @@ client.on('data', function(data){
     var response = JSON.parse(data);
     if(response.action == 'login') processLoginActionResponse(response);
     else if(response.action=="logout") processLogoutActionResponse(response);
-    else if(response.action="getUsers") processAcceptCommandActionResponse(response);
+    else if(response.action=="getUsers") processAcceptCommandActionResponse(response);
+    else{
+        processAcceptCommandActionResponse(response)
+    }
 })
 
 client.on('end', function(){

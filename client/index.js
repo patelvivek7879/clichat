@@ -98,14 +98,26 @@ function loggedOut(){
     console.log("logout processing ...")
 }
 
-//Events ---------------
+function printActionableCommands() {
+    console.log("++++++++++++++++++++++++");
+    console.log("Valid Commands");
+    console.log("++++++++++++++++++++++++");
+    console.log("login");
+    console.log("logout");
+    console.log("getUsers");
+    console.log("*************************");
+}
+
+function handleError(error){
+        console.log(error);
+        printActionableCommands()
+        processAcceptCommandAction();
+}
+
 eventEmitter.on('loggedIn', loggedIn);
 eventEmitter.on("usersListArrived", usersListArrived);
 eventEmitter.on("loggedOut", loggedOut)
-eventEmitter.on("error", function(error){
-    console.log(error);
-    processAcceptCommandAction();
-})
+eventEmitter.on("error", handleError)
 
 client = new net.Socket();
 client.connect(5500, "localhost", function(){
@@ -123,9 +135,13 @@ client.on('data', function(data){
     }
 })
 
+// runs when the server connection closed occurred
 client.on('end', function(){
     console.log("Connection closed ...")
+    process.exit(0);
 })
+
+// runs when the server error occurred
 client.on('error', function(error){
     console.log(error);
 })

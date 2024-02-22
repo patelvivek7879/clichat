@@ -1,19 +1,8 @@
 const DataModel = require('./DataModel');
 const Request = require('./Request');
-const pino = require('pino');
 const chalk = require('chalk');
 
-const warning = chalk.keyword('orange');
-
-const logger = pino({
-  transport: {
-    target: "pino-pretty",
-    options: {
-      colorize: true,
-    },
-  },
-  logBuffering: false,
-});
+const warning = chalk.keyword('orange').bgKeyword('red');
 
 const net = require("net");
 const readline = require('readline');
@@ -88,7 +77,7 @@ function processLoginActionResponse(response){
             processAction("login");
         }else{
             console.log(warning("################################"));
-            console.log(warning("You are not registered. Please register yourself first."));
+            console.log(chalk.red.bgWhiteBright("You are not registered. Please register yourself first."));
             console.log(warning("################################"));
             processAction("register");
         }

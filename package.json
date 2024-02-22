@@ -19,6 +19,14 @@
   },
   "homepage": "https://github.com/patelvivek7879/clichat#readme",
   "dependencies": {
-    "esm": "^3.2.25"
+    "chalk": "^4.1.2",
+    "crypto": "^1.0.1",
+    "esm": "^3.2.25",
+    "google-auth-library": "^9.6.3",
+    "node-fetch": "^2.7.0",
+    "open": "^8.4.2",
+    "pg": "^8.11.3",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1"
   }
 }

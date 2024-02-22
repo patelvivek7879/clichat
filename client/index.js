@@ -1,5 +1,19 @@
 const DataModel = require('./DataModel');
 const Request = require('./Request');
+const pino = require('pino');
+const chalk = require('chalk');
+
+const warning = chalk.keyword('orange');
+
+const logger = pino({
+  transport: {
+    target: "pino-pretty",
+    options: {
+      colorize: true,
+    },
+  },
+  logBuffering: false,
+});
 
 const net = require("net");
 const readline = require('readline');
@@ -19,12 +33,14 @@ var eventEmitter = new events.EventEmitter();
 var client = null;
 
 function processAction(action){
+    if(action === "register") processRegisterAction();
     if(action=="login") processLoginAction();
     if(action=="logout") processLogoutAction();
     if(action=="acceptCommand") processAcceptCommandAction();
 }
 
 async function processLoginAction(){
+
     let ioInterface = readline.createInterface({
         "input":  process.stdin,
         "output": process.stdout
@@ -41,10 +57,41 @@ async function processLoginAction(){
     client.write(JSON.stringify(request));
 }
 
+async function processRegisterAction(){
+    let ioInterface = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    let username = await acceptInput(" Username : ", ioInterface);
+    let password = await acceptInput(" Password : ", ioInterface);
+    let repassword = await acceptInput(" Re Password : ", ioInterface);
+
+    ioInterface.close();
+
+    if (password === repassword) {
+      let request = new Request();
+      request.action = "register";
+      request.username = username;
+      request.password = password;
+      client.write(JSON.stringify(request));
+    }else{
+        console.error("Password does not match");
+        processAction("register");
+    }
+}
+
 function processLoginActionResponse(response){
     if(response.success == false){
-        console.log(response.error);
-        processAction("login");
+        console.error(chalk.red(response.error)); // logging message Invalid username or password
+        if(response.isUserThere){
+            processAction("login");
+        }else{
+            console.log(warning("################################"));
+            console.log(warning("You are not registered. Please register yourself first."));
+            console.log(warning("################################"));
+            processAction("register");
+        }
     }else{
         model.user = response.result;
         eventEmitter.emit('loggedIn');
@@ -52,10 +99,10 @@ function processLoginActionResponse(response){
 }
 
 function processLogoutAction(){
-    console.log("Logout action -----")
+    console.info("Logout action ")
 }
 function processLogoutActionResponse(response){
-    console.log("logging out...");
+    console.info("logging out...");
     processAction("login");
 }
 
@@ -82,12 +129,12 @@ function processAcceptCommandActionResponse(response){
 }
 
 function loggedIn(){
-    console.log(`Welcome ${model.user.username}`);
+    console.info(`Welcome ${model.user.username}\n`);
     processAction("acceptCommand");
 }
 
 function usersListArrived(users){
-    console.log("List of online users");
+    console.info("List of online users");
     for(var e=0;e<users.length;e++){
         console.log(users[e]);
     }
@@ -99,17 +146,14 @@ function loggedOut(){
 }
 
 function printActionableCommands() {
-    console.log("++++++++++++++++++++++++");
-    console.log("Valid Commands");
-    console.log("++++++++++++++++++++++++");
+    console.warn("Valid Commands");
     console.log("login");
     console.log("logout");
     console.log("getUsers");
-    console.log("*************************");
 }
 
 function handleError(error){
-        console.log(error);
+        console.error(error);
         printActionableCommands()
         processAcceptCommandAction();
 }
@@ -120,9 +164,12 @@ eventEmitter.on("loggedOut", loggedOut)
 eventEmitter.on("error", handleError)
 
 client = new net.Socket();
-client.connect(5500, "localhost", function(){
-    console.log("Connected to chat server ...");
-    processAction('login');
+client.connect(5500, "localhost", function(err){
+    if(err) console.error(err);
+    else {
+        console.log("Connected to chat server ...");
+        processAction('login');
+    }
 });
 
 client.on('data', function(data){
@@ -130,6 +177,11 @@ client.on('data', function(data){
     if(response.action == 'login') processLoginActionResponse(response);
     else if(response.action=="logout") processLogoutActionResponse(response);
     else if(response.action=="getUsers") processAcceptCommandActionResponse(response);
+    else if(response.action=="registered") {
+        console.log(chalk.green("Hoorey !!! User created successfully !!!"));
+        processAction("login")
+        // processLoginActionResponse(response); // enable if after register want user to login directly
+    }
     else{
         processAcceptCommandActionResponse(response)
     }
@@ -143,5 +195,5 @@ client.on('end', function(){
 
 // runs when the server error occurred
 client.on('error', function(error){
-    console.log(error);
+    console.error(error);
 })

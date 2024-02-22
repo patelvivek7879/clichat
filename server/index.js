@@ -1,5 +1,28 @@
+const { Client } = require("pg");
 const net = require("net");
-const fs = require("fs");
+// const fs = require("fs");
+const pino = require("pino");
+const { encrypt, decrypt } = require("./encrypt-decrypt");
+const chalk = require("chalk");
+const { randomUUID } = require("crypto");
+
+// configuring logger
+const logger = pino({
+  transport: {
+    target: "pino-pretty",
+    options: {
+      colorize: true,
+    },
+  },
+});
+
+const client = new Client({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_DATABASE,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
 
 class Response {
   constructor() {
@@ -36,13 +59,34 @@ class DataModel {
 
 var model = new DataModel();
 
-function populateDataStructure() {
-  var usersJSONString = fs.readFileSync("users.data", "utf-8");
-  var users = JSON.parse(usersJSONString).users;
-  users.forEach(function (user) {
-    user.loggedIn = false;
-    user.id = 0;
-    model.users.push(user);
+async function populateDataStructure() {
+  client
+    .connect()
+    .then(() => {
+      logger.info("Connected to PostgreSQL database");
+    })
+    .catch((err) => {
+      logger.error("Error connecting to PostgreSQL database", err);
+    });
+
+  // reading from file
+  // var usersJSONString = fs.readFileSync("users.data", "utf-8");
+  // var users = JSON.parse(usersJSONString).users;
+
+  var users = [];
+
+  client.query("SELECT * FROM users", async (err, res) => {
+    if (err) {
+      logger.error(err);
+      return;
+    } else {
+      users = res.rows;
+      users.forEach(function (user) {
+        user.loggedIn = false;
+        user.id = 0;
+        model.users.push(user);
+      });
+    }
   });
 }
 
@@ -52,10 +96,19 @@ function processRequest(requestObject) {
     let password = requestObject.password;
     let user = model.getUserByUsername(username);
     var success = false;
-    if (user) {
-      if (password == user.password) success = true;
-    }
+
     let response = new Response();
+
+    if (user) {
+      try {
+        if (password == decrypt(user.password)) success = true;
+        else if (username == user.username) {
+          response.isUserThere = true;
+        }
+      } catch (error) {
+        logger.error(error);
+      }
+    }
     response.action = requestObject.action;
     response.success = success;
     if (success) {
@@ -82,6 +135,41 @@ function processRequest(requestObject) {
     response.action = requestObject.action;
     response.result = model.getLoggedInUsers();
     requestObject.socket.write(JSON.stringify(response));
+  } else if (requestObject.action == "register") {
+    var response = new Response();
+    // changed action type
+    response.action = "registered";
+    
+    const { username, password } = requestObject;
+    const encryptedPassword = encrypt(password);
+    
+    const insertionQuery =
+    "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3) RETURNING *";
+    const uuid = randomUUID();
+    try {
+      client.query(
+        insertionQuery,
+        [uuid, username, encryptedPassword],
+        async (err, res) => {
+          if (err) {
+            logger.error(err);
+            return;
+          } else {
+            response.success = true;
+            const { username } = res.rows[0];
+            response.result = {
+              username: username,
+              id: model.getLoggedInUsers().length + 1, // login id when user is logged in this id will be assigned
+            };
+            // response.result = model.getLoggedInUsers();
+            await requestObject.socket.write(JSON.stringify(response));
+            populateDataStructure(); // after registration of a new user repopulate the data structure
+          }
+        }
+      );
+    } catch (error) {
+      logger.error(error);
+    }
   } else {
     if (requestObject.action == "exit") {
       var response = new Response();
@@ -108,16 +196,17 @@ var server = net.createServer(function (socket) {
     try {
       processRequest(requestObject);
     } catch (error) {
-      console.log(error);
+      logger.error(error);
     }
   });
 
   socket.on("end", function () {
-    console.log("Client closed connection");
+    logger.info("Client closed connection");
   });
 
   socket.on("error", function () {
-    console.log("Some problem at client side");
+    client.end();
+    logger.error("Some problem at client side");
   });
 });
 

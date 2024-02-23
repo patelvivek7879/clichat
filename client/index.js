@@ -170,6 +170,9 @@ client.on('data', function(data){
         console.log(chalk.green("Hoorey !!! User created successfully !!!"));
         processAction("login")
         // processLoginActionResponse(response); // enable if after register want user to login directly
+    }else if(response.action=="register") {
+        console.log(chalk.red(response.error));
+        processAction("register");
     }
     else{
         processAcceptCommandActionResponse(response)

@@ -139,12 +139,32 @@ function processRequest(requestObject) {
     var response = new Response();
     // changed action type
     response.action = "registered";
-    
+
     const { username, password } = requestObject;
     const encryptedPassword = encrypt(password);
-    
+    try {
+      // check if user already registered
+      const selectQueryForCheckUser = "SELECT * FROM users WHERE username=$1";
+      client.query(selectQueryForCheckUser, [username], async (err, res) => {
+        if (err) {
+          logger.error(err);
+          return;
+        } else {
+          var response = new Response();
+          response.action = requestObject.action;
+          response.result = "";
+          response.error = `User with ${username} already registered. Please user different username`;
+          response.action = "register";
+          await requestObject.socket.write(JSON.stringify(response));
+        }
+      });
+      return;
+    } catch (error) {
+      logger.error(error);
+    }
+
     const insertionQuery =
-    "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3) RETURNING *";
+      "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3) RETURNING *";
     const uuid = randomUUID();
     try {
       client.query(
